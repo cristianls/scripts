@@ -1,4 +1,5 @@
 WP-Dev-Docker: Mediu de Dezvoltare WordPress Automatizat cu IPVLAN
+
 Acest script Bash automatizează complet procesul de configurare a unui mediu de dezvoltare WordPress pe un server Debian, utilizând Docker. Caracteristica sa principală este crearea unei rețele Docker de tip ipvlan, care alocă containerului Nginx o adresă IP unică în rețeaua locală (LAN). Astfel, site-ul devine accesibil de pe orice dispozitiv din rețea, ca și cum ar fi o mașină fizică separată.
 
 Scriptul a fost creat ca parte a unui tutorial detaliat publicat pe blogul CLSB.net. Vă recomandăm să citiți articolul pentru a înțelege pe deplin toți pașii și conceptele din spatele acestei configurații.
