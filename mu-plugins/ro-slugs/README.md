@@ -12,9 +12,16 @@ Acest plugin transformă automat titlurile articolelor românești în slug-uri 
 
 ## Inspirație și Îmbunătățiri
 
-Acest plugin este dezvoltat după o idee preluată de la [RO Slugs](https://wordpress.com/plugins/ro-slugs), dar aduce îmbunătățiri semnificative:
+Acest plugin este dezvoltat după o idee preluată de la **RO Slugs** (Vali Petcu & Friends), dar aduce îmbunătățiri semnificative:
 
-### Îmbunătățiri față de versiunea originală:
+**Plugin original:**
+- **Nume**: RO Slugs  
+- **Autor**: Vali Petcu & Friends
+- **URI Plugin**: http://www.zoso.ro/ro-slugs-plugin/
+- **Descriere originală**: "Converteşte diacriticele în litere latine ca să nu se mai buşească slugurile"
+- **Versiune**: 2.1
+
+### Îmbunătățiri față de RO Slugs original:
 
 #### 🔤 **Transliterare Extinsă**
 - **Original**: Transformare de bază a diacriticelor
@@ -99,11 +106,13 @@ Plugin-ul funcționează automat la salvarea articolelor. Nu necesită configur�
 ## Autor
 
 **Cristian Sucila**  
-Website: [clsb.net](https://clsb.net)
+Website: [https://clsb.net](https://clsb.net)
 
 ## Licență
 
-Acest plugin este disponibil sub licența GPL v2 sau ulterioară.
+Acest plugin este disponibil sub licența GPL v2 sau ulterioară, menținând compatibilitatea cu ecosystemul WordPress.
+
+**Atribuire**: Dezvoltat după ideea din plugin-ul original **RO Slugs** de Vali Petcu & Friends, cu îmbunătățiri semnificative și funcționalități extinse.
 
 ## Contribuții
 
@@ -122,4 +131,5 @@ Contribuțiile sunt binevenite! Pentru bug-uri, sugestii sau îmbunătățiri, t
 
 ---
 
+**Mulțumiri**: Vali Petcu & Friends pentru ideea originală din plugin-ul RO Slugs  
 *Dezvoltat cu ❤️ pentru comunitatea WordPress românească*
