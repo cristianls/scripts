@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Slugs Românești Optimizate
  * Description:       Transformă titlurile articolelor în slug-uri curate, eliminând diacriticele românești și cuvintele de legătură. Rulează doar înainte de publicare.
- * Version:           1.4
+ * Version:           1.5 (Corectat)
  * Author:            Cristian Sucila (Optimizat)
  * Author URI:        https://clsb.net
  * Text Domain:       slugs-romanesti-optimizate
@@ -20,7 +20,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Definiește constante pentru plugin
-define('SRO_PLUGIN_VERSION', '1.4');
+define('SRO_PLUGIN_VERSION', '1.5');
 define('SRO_PLUGIN_FILE', __FILE__);
 define('SRO_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('SRO_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -80,7 +80,7 @@ class RomanianSlugsOptimizer {
         '/[ç]/u' => 'c',
         
         // Semne de punctuație și simboluri
-        '/[""„"''‚']/u' => '-',
+        '/["„“”\'‚‘’]/u' => '-', // << CORECȚIA ESTE AICI
         '/[…]/u' => '-',
         '/[–—]/u' => '-',
         '/[&]/u' => 'si',
