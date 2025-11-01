@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Slugs Românești Optimizate
  * Description:       Transformă titlurile articolelor în slug-uri curate, eliminând diacriticele românești și cuvintele de legătură. Rulează doar înainte de publicare.
- * Version:           1.5 (Corectat)
+ * Version:           1.7 (Fix Complet)
  * Author:            Cristian Sucila (Optimizat)
  * Author URI:        https://clsb.net
  * Text Domain:       slugs-romanesti-optimizate
@@ -20,7 +20,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Definiește constante pentru plugin
-define('SRO_PLUGIN_VERSION', '1.5');
+define('SRO_PLUGIN_VERSION', '1.7');
 define('SRO_PLUGIN_FILE', __FILE__);
 define('SRO_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('SRO_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -34,8 +34,9 @@ class RomanianSlugsOptimizer {
      * Lista de stop words românești
      */
     private const DEFAULT_STOP_WORDS = [
-        // Articole și pronume
+        // Articole și pronume (inclusiv scurte)
         'a', 'al', 'ale', 'ea', 'ei', 'el', 'ele', 'ii', 'il', 'la', 'le', 'lui', 'o', 'un', 'une', 'unui', 'unei',
+        'am', 'ai', 'ma', 'mi', 'te', 'ti', 'va', 'vi', 'ne', 'va', 'imi', 'iti', 'isi',
         
         // Prepoziții
         'cu', 'de', 'din', 'dintre', 'fara', 'in', 'pe', 'prin', 'sub', 'asupra', 'catre', 'contra', 'dupa',
@@ -49,7 +50,7 @@ class RomanianSlugsOptimizer {
         'mult', 'prea', 'putin', 'tot', 'unde',
         
         // Verbe auxiliare și de legătură
-        'am', 'ai', 'are', 'avem', 'aveti', 'au', 'eram', 'este', 'esti', 'sunt', 'suntem', 'sunteti',
+        'are', 'avem', 'aveti', 'au', 'eram', 'este', 'esti', 'sunt', 'suntem', 'sunteti',
         'fi', 'fie', 'fiind', 'fost', 'sa', 'se',
         
         // Numere și cantități
@@ -57,15 +58,19 @@ class RomanianSlugsOptimizer {
         
         // Pronume și adjective demonstrative
         'acest', 'acesta', 'aceasta', 'aceste', 'acestea', 'acestia', 'acea', 'asta', 'astea', 'astia',
-        'cel', 'cea', 'cei', 'cele', 'care', 'ce', 'cine'
+        'cel', 'cea', 'cei', 'cele', 'care', 'ce', 'cine',
+        
+        // Cuvinte scurte suplimentare (sub 3 caractere care nu sunt importante)
+        'm', 'l', 's', 't', 'n', 'as', 'ar', 'e', 'i', 'da', 'nu'
     ];
     
     /**
      * Harta de transliterare pentru caractere speciale
      */
     private const DEFAULT_TRANSLITERATION_MAP = [
-        // Caractere românești
-        '/[ăâÂĂ]/u' => 'a',
+        // Caractere românești - TOATE variantele
+        '/[ăĂ]/u' => 'a',
+        '/[âÂ]/u' => 'a',
         '/[îÎ]/u' => 'i',
         '/[șşŞȘ]/u' => 's',
         '/[țţŢȚ]/u' => 't',
@@ -78,15 +83,6 @@ class RomanianSlugsOptimizer {
         '/[ùúûü]/u' => 'u',
         '/[ñ]/u' => 'n',
         '/[ç]/u' => 'c',
-        
-        // Semne de punctuație și simboluri
-        '/["„“”\'‚‘’]/u' => '-', // << CORECȚIA ESTE AICI
-        '/[…]/u' => '-',
-        '/[–—]/u' => '-',
-        '/[&]/u' => 'si',
-        '/[@]/u' => 'at',
-        '/[%]/u' => 'procent',
-        '/[+]/u' => 'plus'
     ];
     
     /**
@@ -125,7 +121,8 @@ class RomanianSlugsOptimizer {
      * Inițializează hook-urile WordPress
      */
     private function init_hooks() {
-        add_filter('wp_unique_post_slug', [$this, 'optimize_slug'], 10, 5);
+        // Hook principal pentru generarea slug-ului
+        add_filter('wp_insert_post_data', [$this, 'filter_post_data_before_save'], 10, 2);
         add_action('plugins_loaded', [$this, 'load_textdomain']);
     }
     
@@ -141,45 +138,45 @@ class RomanianSlugsOptimizer {
     }
     
     /**
-     * Filtrează slug-ul la salvarea unui articol pentru a-l optimiza
+     * Filtrează datele postului înainte de salvare pentru a optimiza slug-ul
      *
-     * @param string $slug        Slug-ul curent generat de WordPress
-     * @param int    $post_ID     ID-ul postului editat
-     * @param string $post_status Status-ul postului
-     * @param string $post_type   Tipul de post
-     * @param int    $post_parent ID-ul părintelui postului
-     * @return string             Slug-ul modificat
+     * @param array $data    Array cu datele postului
+     * @param array $postarr Array cu datele originale din request
+     * @return array         Datele modificate
      */
-    public function optimize_slug($slug, $post_ID, $post_status, $post_type, $post_parent) {
+    public function filter_post_data_before_save($data, $postarr) {
         // Verifică dacă este un tip de post valid pentru optimizare
-        if (!$this->should_optimize_post_type($post_type)) {
-            return $slug;
+        if (!$this->should_optimize_post_type($data['post_type'])) {
+            return $data;
         }
         
-        // Obține datele postului pentru verificarea statusului
-        $post = get_post($post_ID);
-        if (!$post) {
-            return $slug;
+        // Nu modifica slug-ul dacă articolul este deja publicat
+        if (isset($postarr['ID'])) {
+            $existing_post = get_post($postarr['ID']);
+            if ($existing_post && in_array($existing_post->post_status, ['publish', 'private'], true)) {
+                return $data;
+            }
         }
         
-        // Nu modifica slug-ul dacă articolul este deja publicat sau privat
-        if (in_array($post->post_status, ['publish', 'private'], true)) {
-            return $slug;
+        // Permite dezvoltatorilor să dezactiveze optimizarea
+        if (apply_filters('sro_skip_optimization', false, $postarr['ID'] ?? 0, $data)) {
+            return $data;
         }
         
-        // Permite dezvoltatorilor să dezactiveze optimizarea pentru anumite posturi
-        if (apply_filters('sro_skip_optimization', false, $post_ID, $post)) {
-            return $slug;
+        // Dacă nu avem titlu, nu procesăm
+        if (empty($data['post_title'])) {
+            return $data;
         }
         
-        // Generează slug-ul optimizat din titlu
-        $title = get_the_title($post_ID);
+        // Generează slug-ul optimizat
+        $optimized_slug = $this->process_slug($data['post_title'], $postarr['ID'] ?? 0);
         
-        if (empty(trim($title))) {
-            return $this->generate_fallback_slug($post_ID, $post_type);
+        // Dacă avem un slug valid, îl setăm
+        if (!empty($optimized_slug)) {
+            $data['post_name'] = $optimized_slug;
         }
         
-        return $this->process_slug($title, $post_ID);
+        return $data;
     }
     
     /**
@@ -211,25 +208,30 @@ class RomanianSlugsOptimizer {
         // 1. Aplică transliterarea caracterelor speciale
         $slug = $this->transliterate_text($slug);
         
-        // 2. Convertește la minuscule
+        // 2. Elimină toate caracterele speciale și le înlocuiește cu spații
+        $slug = preg_replace('/[^a-z0-9\s]/ui', ' ', $slug);
+        
+        // 3. Convertește la minuscule
         $slug = mb_strtolower($slug, 'UTF-8');
         
-        // 3. Înlocuiește caracterele non-alfanumerice cu cratimă
-        $slug = preg_replace('/[^a-z0-9\s\-]/u', '', $slug);
-        $slug = preg_replace('/[\s\-]+/', '-', $slug);
+        // 4. Înlocuiește spațiile multiple cu un singur spațiu
+        $slug = preg_replace('/\s+/', ' ', trim($slug));
         
-        // 4. Elimină stop words
+        // 5. Transformă spațiile în cratimă
+        $slug = str_replace(' ', '-', $slug);
+        
+        // 6. Elimină stop words și cuvinte scurte
         $slug = $this->remove_stop_words($slug);
         
-        // 5. Curăță și finalizează slug-ul
+        // 7. Curăță și finalizează slug-ul
         $slug = $this->clean_slug($slug);
         
-        // 6. Verifică dacă slug-ul este valid
+        // 8. Verifică dacă slug-ul este valid
         if (empty($slug) || strlen($slug) < 2) {
-            return $this->generate_fallback_slug($post_ID, get_post_type($post_ID));
+            return $this->generate_fallback_slug($post_ID, get_post_type($post_ID) ?: 'post');
         }
         
-        // 7. Limitează lungimea slug-ului (SEO best practice)
+        // 9. Limitează lungimea slug-ului (SEO best practice)
         $max_length = apply_filters('sro_max_slug_length', 60);
         if (strlen($slug) > $max_length) {
             $slug = $this->truncate_slug($slug, $max_length);
@@ -266,7 +268,7 @@ class RomanianSlugsOptimizer {
     }
     
     /**
-     * Elimină cuvintele de legătură din slug
+     * Elimină cuvintele de legătură și cuvinte scurte din slug
      *
      * @param string $slug Slug-ul de procesat
      * @return string
@@ -279,16 +281,48 @@ class RomanianSlugsOptimizer {
         $words = explode('-', $slug);
         $filtered_words = [];
         
+        $min_word_length = apply_filters('sro_min_word_length', 4);
+        
         foreach ($words as $word) {
             $word = trim($word);
-            if (!empty($word) && !in_array($word, self::$stop_words_cache, true)) {
-                $filtered_words[] = $word;
+            
+            // Elimină cuvintele goale
+            if (empty($word)) {
+                continue;
             }
+            
+            // Elimină stop words (verificare exactă)
+            if (in_array($word, self::$stop_words_cache, true)) {
+                continue;
+            }
+            
+            // Elimină cuvinte prea scurte (sub 4 caractere implicit)
+            if (strlen($word) < $min_word_length) {
+                continue;
+            }
+            
+            $filtered_words[] = $word;
         }
         
-        // Păstrează cel puțin primul și ultimul cuvânt dacă nu sunt stop words
-        if (empty($filtered_words) && count($words) >= 2) {
-            $filtered_words = [$words[0], $words[count($words) - 1]];
+        // Dacă nu a rămas niciun cuvânt, păstrează primele cuvinte mai lungi
+        if (empty($filtered_words) && !empty($words)) {
+            // Încearcă să găsești cel puțin un cuvânt de lungime decentă
+            foreach ($words as $word) {
+                $word = trim($word);
+                if (strlen($word) >= 3 && !in_array($word, self::$stop_words_cache, true)) {
+                    $filtered_words[] = $word;
+                    if (count($filtered_words) >= 3) {
+                        break;
+                    }
+                }
+            }
+            
+            // Dacă tot nu avem nimic, ia primele 3 cuvinte non-empty
+            if (empty($filtered_words)) {
+                $filtered_words = array_filter(array_slice($words, 0, 3), function($w) {
+                    return !empty(trim($w));
+                });
+            }
         }
         
         return implode('-', $filtered_words);
@@ -353,8 +387,6 @@ class RomanianSlugsOptimizer {
         $prefix = ($post_type === 'page') ? 'pagina' : 'articol';
         return $prefix . '-' . $post_ID;
     }
-    
-
 }
 
 /**
